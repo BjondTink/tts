@@ -1,0 +1,6 @@
+{
+  "name": "TTS",
+  "description": "Kthimi i tekstit në audio me zëra inteligjentë Gemini për Real Estate, rregullim gramatikor në shqip dhe shkarkim MP3.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
