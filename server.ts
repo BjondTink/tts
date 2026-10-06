@@ -4,7 +4,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import lamejs from 'lamejs';
+import { Mp3Encoder } from '@breezystack/lamejs';
 
 dotenv.config();
 
@@ -76,7 +76,7 @@ function wavToMp3Buffer(wavBuffer: Buffer): Buffer {
     }
   }
 
-  const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 192);
+  const mp3encoder = new Mp3Encoder(channels, sampleRate, 192);
   const mp3Chunks: Uint8Array[] = [];
   const blockSize = 1152;
 

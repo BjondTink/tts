@@ -1,4 +1,4 @@
-import lamejs from 'lamejs';
+import { Mp3Encoder } from '@breezystack/lamejs';
 
 // Base64 helper
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -11,7 +11,7 @@ export function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-// Convert AudioBuffer to MP3 Blob using lamejs
+// Convert AudioBuffer to MP3 Blob using Mp3Encoder
 export function audioBufferToMp3Blob(audioBuffer: AudioBuffer, kbps = 192): Blob {
   const channels = audioBuffer.numberOfChannels;
   const sampleRate = audioBuffer.sampleRate;
@@ -36,7 +36,7 @@ export function audioBufferToMp3Blob(audioBuffer: AudioBuffer, kbps = 192): Blob
     }
   }
 
-  const encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+  const encoder = new Mp3Encoder(channels, sampleRate, kbps);
   const mp3Data: Uint8Array[] = [];
   const blockSize = 1152;
 
