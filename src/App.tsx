@@ -25,7 +25,6 @@ import {
 import { VoiceSelector, VoiceItem } from './components/VoiceSelector.tsx';
 import { AudioPlayer } from './components/AudioPlayer.tsx';
 import { GrammarFixModal } from './components/GrammarFixModal.tsx';
-import { TemplatePicker, TemplateItem } from './components/TemplatePicker.tsx';
 
 // Preset real estate tones
 const REAL_ESTATE_TONES = [
@@ -50,7 +49,6 @@ export default function App() {
     'Shitet apartament modern 2+1 ne nje nga zonat me te mira te Tiranes. Siperfaqe 95 metra katrore me ndricim natyral, dy tualete dhe ballkon me pamje fantastike. Pallat i ri me ashensor dhe dokumentacion te rregullt hipotekor. Kontaktoni per nje vizite ne prone!'
   );
   const [voices, setVoices] = useState<VoiceItem[]>([]);
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('Kore');
   const [selectedTone, setSelectedTone] = useState<string>('Profesional');
   const [speedPrompt, setSpeedPrompt] = useState<string>('Normal');
@@ -85,7 +83,7 @@ export default function App() {
 
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
 
-  // Fetch voices and templates on mount
+  // Fetch voices on mount
   useEffect(() => {
     fetch('/api/voices')
       .then((res) => res.json())
@@ -95,15 +93,6 @@ export default function App() {
         }
       })
       .catch((err) => console.error('Failed to load voices:', err));
-
-    fetch('/api/templates')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.templates) {
-          setTemplates(data.templates);
-        }
-      })
-      .catch((err) => console.error('Failed to load templates:', err));
   }, []);
 
   // Text statistics
@@ -225,59 +214,14 @@ export default function App() {
               TTS
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-bold text-base text-white tracking-tight">TTS</h1>
-                <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  Real Estate Shqip
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Tekst në Audio me Gemini AI & Shkarkim MP3
-              </p>
+              <h1 className="font-bold text-lg text-white tracking-tight">TTS</h1>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Gati për Real Estate
-            </span>
           </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full space-y-6">
-        {/* Banner with simple guidance */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
-          <div className="space-y-1">
-            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-              <Building className="w-4 h-4 text-emerald-400" />
-              Krijo audio profesionale për videot & njoftimet e pronave
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300">
-              Shkruaj tekstin, rregullo gramatikën me 1-klik, zgjidh zërin e preferuar dhe shkarko skedarin në format <strong className="text-emerald-400">.mp3</strong> për TikTok, Instagram, YouTube apo radio.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 flex-shrink-0">
-            <span>🇦🇱 Shqip Standard</span>
-            <span>•</span>
-            <span>10 Zëra AI</span>
-            <span>•</span>
-            <span>MP3 192kbps</span>
-          </div>
-        </div>
-
-        {/* Real Estate Ready Templates */}
-        {templates.length > 0 && (
-          <TemplatePicker
-            templates={templates}
-            onSelectTemplate={(newText) => {
-              setText(newText);
-            }}
-          />
-        )}
-
         {/* Main Work Area */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left / Center Column: Text Input & Grammar Polish (7 cols on lg) */}
@@ -533,7 +477,7 @@ export default function App() {
             <span>Studio Audio për Njoftime Real Estate në Shqip</span>
           </div>
           <div className="text-slate-400">
-            Mundësuar me Gemini AI • Shkarkim .mp3
+            Mundësuar me Dashuri nga Reni • Shkarkim .mp3
           </div>
         </div>
       </footer>
