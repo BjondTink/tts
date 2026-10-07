@@ -350,10 +350,16 @@ export default {
 
         const apiKey = env.GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
         if (!apiKey) {
-          return new Response(JSON.stringify({ error: 'GEMINI_API_KEY mungon në konfigurim.' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return new Response(
+            JSON.stringify({
+              error:
+                'GEMINI_API_KEY mungon në Cloudflare! Shko te paneli i Cloudflare: zeri > Settings > Variables and Secrets dhe shto GEMINI_API_KEY me çelësin tënd.',
+            }),
+            {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
         }
 
         const ai = new GoogleGenAI({
