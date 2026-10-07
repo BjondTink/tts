@@ -1,14 +1,69 @@
 import { Mp3Encoder } from '@breezystack/lamejs';
 
-// Base64 helper
-export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = window.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+// Manual byte-level Base64 decoder that never relies on window.atob and never throws DOMException
+function manualBase64ToArrayBuffer(b64: string): ArrayBuffer {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const lookup = new Uint8Array(256);
+  for (let i = 0; i < chars.length; i++) {
+    lookup[chars.charCodeAt(i)] = i;
+  }
+
+  let bufferLength = b64.length * 0.75;
+  if (b64.endsWith('==')) bufferLength -= 2;
+  else if (b64.endsWith('=')) bufferLength -= 1;
+
+  const bytes = new Uint8Array(Math.max(0, Math.floor(bufferLength)));
+  let p = 0;
+  for (let i = 0; i < b64.length; i += 4) {
+    const encoded1 = lookup[b64.charCodeAt(i)];
+    const encoded2 = lookup[b64.charCodeAt(i + 1)];
+    const encoded3 = lookup[b64.charCodeAt(i + 2)];
+    const encoded4 = lookup[b64.charCodeAt(i + 3)];
+
+    if (p < bytes.length) bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+    if (b64[i + 2] !== '=' && p < bytes.length) bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+    if (b64[i + 3] !== '=' && p < bytes.length) bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
   }
   return bytes.buffer;
+}
+
+// Robust Base64 helper compatible with Safari/iOS, Chrome, Firefox
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  if (!base64 || typeof base64 !== 'string') {
+    return new ArrayBuffer(0);
+  }
+
+  // Strip Data URI prefix if present (e.g. data:audio/wav;base64,)
+  let cleaned = base64;
+  const commaIdx = cleaned.indexOf(',');
+  if (commaIdx !== -1 && cleaned.slice(0, commaIdx).includes('base64')) {
+    cleaned = cleaned.slice(commaIdx + 1);
+  }
+
+  // Remove whitespace, line breaks, tabs
+  cleaned = cleaned.replace(/[\s\r\n\t]+/g, '');
+
+  // Convert URL-safe base64 to standard base64
+  cleaned = cleaned.replace(/-/g, '+').replace(/_/g, '/');
+
+  // Fix padding to multiple of 4
+  const mod = cleaned.length % 4;
+  if (mod !== 0) {
+    cleaned += '='.repeat(4 - mod);
+  }
+
+  try {
+    const binaryString = window.atob(cleaned);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  } catch {
+    // If atob fails on Safari / iOS, fallback to manual binary decoder
+    return manualBase64ToArrayBuffer(cleaned);
+  }
 }
 
 // Convert AudioBuffer to MP3 Blob using Mp3Encoder

@@ -167,9 +167,20 @@ export default function App() {
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Dështoi gjenerimi i audios.');
+        let errMsg = 'Dështoi gjenerimi i audios.';
+        try {
+          const errData = await res.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch {
+          errMsg = `Gabim nga serveri (${res.status}). Ju lutem provoni përsëri.`;
+        }
+        throw new Error(errMsg);
+      }
+
+      const data = await res.json();
+      if (!data || !data.audioBase64) {
+        throw new Error(data?.error || 'Nuk u morën të dhëna audio nga serveri.');
       }
 
       setGeneratedAudio({
@@ -189,7 +200,12 @@ export default function App() {
     } catch (err: any) {
       console.warn('TTS Generation notice:', err);
       let userFriendlyMsg = 'Ndodhi një gabim gjatë krijimit të audios. Ju lutem provoni përsëri pas pak sekondash.';
-      if (err?.message && !err.message.includes('{') && !err.message.includes('503')) {
+      if (
+        err?.message &&
+        !err.message.includes('{') &&
+        !err.message.includes('503') &&
+        !err.message.includes('expected pattern')
+      ) {
         userFriendlyMsg = err.message;
       }
       setGenerationError(userFriendlyMsg);

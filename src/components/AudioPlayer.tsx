@@ -55,9 +55,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const loadAudio = async () => {
       try {
         const arrayBuf = base64ToArrayBuffer(wavBase64);
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
-          sampleRate: 24000,
-        });
+        if (!arrayBuf || arrayBuf.byteLength === 0) return;
+
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+
+        const ctx = new AudioCtx();
         audioContextRef.current = ctx;
 
         // Decode audio data for offline rendering / effects
@@ -67,7 +70,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         setCurrentTime(0);
         setIsPlaying(false);
       } catch (err) {
-        console.error('Audio decode error:', err);
+        console.warn('Audio decode notice:', err);
       }
     };
 
