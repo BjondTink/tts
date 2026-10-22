@@ -42,8 +42,8 @@ const VOICES = [
     samplePitch: 'E mesme / Autoritare',
   },
   {
-    id: 'Thalassa',
-    name: 'Thalassa',
+    id: 'Callirrhoe',
+    name: 'Callirrhoe',
     gender: 'Femër',
     toneDesc: 'E freskët, energjike dhe moderne',
     recommendedFor: 'Rezidenca bregdetare, prona në Vlorë/Durrës/Sarandë',
@@ -74,22 +74,29 @@ const VOICES = [
     samplePitch: 'E lartë / Energjike',
   },
   {
-    id: 'Orpheus',
-    name: 'Orpheus',
+    id: 'Orus',
+    name: 'Orus',
     gender: 'Mashkull',
     toneDesc: 'I ngrohtë, rrëfyes dhe komod si në shtëpi',
     recommendedFor: 'Ture virtuale të shtëpive, përshkrim ambienti familjar',
     samplePitch: 'E ngrohtë / Rrëfyese',
   },
   {
-    id: 'Perseus',
-    name: 'Perseus',
+    id: 'Iapetus',
+    name: 'Iapetus',
     gender: 'Mashkull',
     toneDesc: 'I drejtpërdrejtë, i qartë dhe profesional',
     recommendedFor: 'Përshkrime teknike të pronës, sipërfaqe, kate, çmime',
     samplePitch: 'E ekuilibruar / Moderne',
   },
 ];
+
+const VALID_VOICE_IDS = new Set(VOICES.map((v) => v.id));
+const VOICE_ALIASES: Record<string, string> = {
+  Perseus: 'Iapetus',
+  Orpheus: 'Orus',
+  Thalassa: 'Callirrhoe',
+};
 
 function albanianGrammarFallback(input: string, mode: 'grammar' | 'enhance') {
   let cleaned = input;
@@ -250,6 +257,29 @@ function base64ToUint8(base64: string): Uint8Array {
   return bytes;
 }
 
+function resolveApiKey(env: any): string {
+  const envObj = (env || {}) as Record<string, any>;
+  const rawKey =
+    envObj.GEMINI_API_KEY ||
+    envObj.gemini_api_key ||
+    envObj.Gemini_API_Key ||
+    envObj.Gemini_Api_Key ||
+    envObj.GOOGLE_API_KEY ||
+    envObj.google_api_key ||
+    envObj.API_KEY ||
+    envObj.api_key ||
+    envObj.GEMINI_KEY ||
+    (typeof process !== 'undefined'
+      ? process.env?.GEMINI_API_KEY ||
+        process.env?.GOOGLE_API_KEY ||
+        process.env?.API_KEY
+      : '') ||
+    '';
+
+  if (!rawKey || typeof rawKey !== 'string') return '';
+  return rawKey.trim().replace(/^["']|["']$/g, '');
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -274,7 +304,7 @@ export default {
           });
         }
 
-        const apiKey = env.GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
+        const apiKey = resolveApiKey(env);
         if (!apiKey) {
           const fallback = albanianGrammarFallback(text, mode === 'enhance' ? 'enhance' : 'grammar');
           return new Response(JSON.stringify(fallback), {
@@ -348,12 +378,12 @@ export default {
           });
         }
 
-        const apiKey = env.GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
+        const apiKey = resolveApiKey(env);
         if (!apiKey) {
           return new Response(
             JSON.stringify({
               error:
-                'GEMINI_API_KEY mungon në Cloudflare! Shko te paneli i Cloudflare: zeri > Settings > Variables and Secrets dhe shto GEMINI_API_KEY me çelësin tënd.',
+                'GEMINI_API_KEY nuk u gjet ende në Cloudflare! Nëse sapo e shtove te Variables and Secrets, shko te Deployments dhe kliko "Redeploy" (ose "Retry build") që Cloudflare ta lidhë çelësin me faqen live.',
             }),
             {
               status: 500,
@@ -367,23 +397,49 @@ export default {
           httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
         });
 
+        const mappedVoice = VOICE_ALIASES[voice] || voice;
+        const resolvedVoice = VALID_VOICE_IDS.has(mappedVoice) ? mappedVoice : 'Kore';
+
         const stylePrompt = `Clear, natural spoken Albanian pronunciation. Real Estate presentation tone: ${tone}. Pace: ${speedInstruction}. Articulate numbers, locations, and descriptions fluently.`;
 
-        const aiRes = await ai.models.generateContent({
-          model: 'gemini-3.8-flash-lite-tts',
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: text.trim(), speechMetadata: { style: stylePrompt } }],
+        let aiRes: any;
+        try {
+          aiRes = await ai.models.generateContent({
+            model: 'gemini-3.8-flash-lite-tts',
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: text.trim(), speechMetadata: { style: stylePrompt } }],
+              },
+            ],
+            config: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: resolvedVoice } },
+              },
             },
-          ],
-          config: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
-            },
-          },
-        });
+          });
+        } catch (ttsErr: any) {
+          if (ttsErr?.message?.includes('No matching speaker voice') || ttsErr?.message?.includes('INVALID_ARGUMENT')) {
+            aiRes = await ai.models.generateContent({
+              model: 'gemini-3.8-flash-lite-tts',
+              contents: [
+                {
+                  role: 'user',
+                  parts: [{ text: text.trim(), speechMetadata: { style: stylePrompt } }],
+                },
+              ],
+              config: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+                },
+              },
+            });
+          } else {
+            throw ttsErr;
+          }
+        }
 
         const base64Audio = aiRes.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (!base64Audio) {

@@ -148,8 +148,8 @@ const VOICES: VoiceMeta[] = [
     samplePitch: 'E mesme / Autoritare',
   },
   {
-    id: 'Thalassa',
-    name: 'Thalassa',
+    id: 'Callirrhoe',
+    name: 'Callirrhoe',
     gender: 'Femër',
     toneDesc: 'E freskët, energjike dhe moderne',
     recommendedFor: 'Rezidenca bregdetare, prona në Vlorë/Durrës/Sarandë',
@@ -180,22 +180,29 @@ const VOICES: VoiceMeta[] = [
     samplePitch: 'E lartë / Energjike',
   },
   {
-    id: 'Orpheus',
-    name: 'Orpheus',
+    id: 'Orus',
+    name: 'Orus',
     gender: 'Mashkull',
     toneDesc: 'I ngrohtë, rrëfyes dhe komod si në shtëpi',
     recommendedFor: 'Ture virtuale të shtëpive, përshkrim ambienti familjar',
     samplePitch: 'E ngrohtë / Rrëfyese',
   },
   {
-    id: 'Perseus',
-    name: 'Perseus',
+    id: 'Iapetus',
+    name: 'Iapetus',
     gender: 'Mashkull',
     toneDesc: 'I drejtpërdrejtë, i qartë dhe profesional',
     recommendedFor: 'Përshkrime teknike të pronës, sipërfaqe, kate, çmime',
     samplePitch: 'E ekuilibruar / Moderne',
   },
 ];
+
+const VALID_VOICE_IDS = new Set(VOICES.map((v) => v.id));
+const VOICE_ALIASES: Record<string, string> = {
+  Perseus: 'Iapetus',
+  Orpheus: 'Orus',
+  Thalassa: 'Callirrhoe',
+};
 
 // Endpoint: List Voices
 app.get('/api/voices', (_req, res) => {
@@ -239,17 +246,17 @@ app.get('/api/templates', (_req, res) => {
   res.json({ templates });
 });
 
-function withTimeout<T>(promise: Promise<T>, ms = 7500): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = 60000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Koha e përgjigjes skadoi')), ms)
+      setTimeout(() => reject(new Error('Koha e gjenerimit skadoi. Ju lutem provoni përsëri.')), ms)
     ),
   ]);
 }
 
 // Helper: Robust generation with timeout and retry
-async function generateWithRetry(fn: () => Promise<any>, maxRetries = 1, timeoutMs = 7500): Promise<any> {
+async function generateWithRetry(fn: () => Promise<any>, maxRetries = 1, timeoutMs = 60000): Promise<any> {
   let lastError: any;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -466,6 +473,10 @@ app.post('/api/tts/generate', async (req, res) => {
       speedHint = 'Speak with vivid pacing, energetic transitions and high clarity.';
     }
 
+    // Resolve and validate speaker voice
+    const mappedVoice = VOICE_ALIASES[voice] || voice;
+    const resolvedVoice = VALID_VOICE_IDS.has(mappedVoice) ? mappedVoice : 'Kore';
+
     const stylePrompt = `Clear, natural spoken Albanian pronunciation. Real Estate presentation tone: ${tone}. ${speedHint} Articulate numbers, locations, and descriptions fluently.`;
 
     const ttsModels = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
@@ -494,7 +505,7 @@ app.post('/api/tts/generate', async (req, res) => {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: voice },
+                  prebuiltVoiceConfig: { voiceName: resolvedVoice },
                 },
               },
             },
@@ -503,8 +514,42 @@ app.post('/api/tts/generate', async (req, res) => {
         if (response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
           break;
         }
-      } catch (e) {
+      } catch (e: any) {
         lastErr = e;
+        // If the specific voice fails, immediately fallback to universal voice Kore
+        if (e?.message?.includes('No matching speaker voice') || e?.message?.includes('INVALID_ARGUMENT')) {
+          try {
+            response = await generateWithRetry(() =>
+              ai.models.generateContent({
+                model,
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        text: text.trim(),
+                        speechMetadata: { style: stylePrompt },
+                      },
+                    ],
+                  },
+                ],
+                config: {
+                  responseModalities: ['AUDIO'],
+                  speechConfig: {
+                    voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: 'Kore' },
+                    },
+                  },
+                },
+              })
+            );
+            if (response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
+              break;
+            }
+          } catch (koreErr) {
+            lastErr = koreErr;
+          }
+        }
       }
     }
 
@@ -540,8 +585,12 @@ app.post('/api/tts/generate', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Error in /api/tts/generate:', error);
+    let errorMessage = error?.message || 'Ndodhi një gabim gjatë krijimit të audios.';
+    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('quota')) {
+      errorMessage = 'Kuota ditore e kërkesave falas të Gemini TTS u arrit përkohësisht. Ju lutem provoni përsëri pak më vonë.';
+    }
     return res.status(500).json({
-      error: error?.message || 'Ndodhi një gabim gjatë krijimit të audios.',
+      error: errorMessage,
     });
   }
 });
@@ -550,7 +599,10 @@ app.post('/api/tts/generate', async (req, res) => {
 async function startServer() {
   if (!isProduction) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
