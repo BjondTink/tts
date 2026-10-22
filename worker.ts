@@ -10,92 +10,36 @@ interface Env {
 
 const VOICES = [
   {
-    id: 'Kore',
-    name: 'Kore',
-    gender: 'Femër',
-    toneDesc: 'E ngrohtë, e qetë, me artikulim kristal të pastër',
-    recommendedFor: 'Apartamente luksoze, vila private dhe prezantime të rafinuara',
-    samplePitch: 'E mesme / E butë',
-  },
-  {
-    id: 'Zephyr',
-    name: 'Zephyr',
-    gender: 'Femër',
-    toneDesc: 'E lehtë, mikpritëse dhe miqësore',
-    recommendedFor: 'Shtëpi pushimi, apartamente me qira dhe video në rrjete sociale',
-    samplePitch: 'E lartë / E gëzueshme',
-  },
-  {
-    id: 'Aoede',
-    name: 'Aoede',
-    gender: 'Femër',
-    toneDesc: 'Ekspresive, melodioze dhe shumë tërheqëse',
-    recommendedFor: 'Reel-sa, TikTok & video promovuese tërheqëse',
-    samplePitch: 'E mesme / Dinamike',
-  },
-  {
-    id: 'Leda',
-    name: 'Leda',
-    gender: 'Femër',
-    toneDesc: 'Profesionale, serioze dhe korporative',
-    recommendedFor: 'Zyra, qendra biznesi, investime komerciale',
-    samplePitch: 'E mesme / Autoritare',
-  },
-  {
-    id: 'Callirrhoe',
-    name: 'Callirrhoe',
-    gender: 'Femër',
-    toneDesc: 'E freskët, energjike dhe moderne',
-    recommendedFor: 'Rezidenca bregdetare, prona në Vlorë/Durrës/Sarandë',
-    samplePitch: 'E gjallë / E freskët',
-  },
-  {
     id: 'Charon',
-    name: 'Charon',
+    name: 'Charon (Mashkull - Primar)',
     gender: 'Mashkull',
-    toneDesc: 'Zë i thellë, autoritar dhe bindës',
-    recommendedFor: 'Vila elitare, prona premium, Rolling Hills, qetësi dhe besim',
+    toneDesc: 'Zë i thellë, autoritar, serioz dhe bindës',
+    recommendedFor: 'Vila elitare, apartamente premium, video promocionale dhe njoftime shitjesh',
     samplePitch: 'E thellë / Bariton',
   },
   {
-    id: 'Fenrir',
-    name: 'Fenrir',
-    gender: 'Mashkull',
-    toneDesc: 'Rezultativ, i vendosur dhe i fortë',
-    recommendedFor: 'Mundësi investimi, njoftime shitjesh me çmim të favorshëm',
-    samplePitch: 'E fortë / Rezonante',
-  },
-  {
-    id: 'Puck',
-    name: 'Puck',
-    gender: 'Mashkull',
-    toneDesc: 'Dinamik, entuziast dhe me ritëm të shpejtë',
-    recommendedFor: 'Ofertë e ditës, njoftime emergjente shitjeje, stories',
-    samplePitch: 'E lartë / Energjike',
-  },
-  {
-    id: 'Orus',
-    name: 'Orus',
-    gender: 'Mashkull',
-    toneDesc: 'I ngrohtë, rrëfyes dhe komod si në shtëpi',
-    recommendedFor: 'Ture virtuale të shtëpive, përshkrim ambienti familjar',
-    samplePitch: 'E ngrohtë / Rrëfyese',
-  },
-  {
-    id: 'Iapetus',
-    name: 'Iapetus',
-    gender: 'Mashkull',
-    toneDesc: 'I drejtpërdrejtë, i qartë dhe profesional',
-    recommendedFor: 'Përshkrime teknike të pronës, sipërfaqe, kate, çmime',
-    samplePitch: 'E ekuilibruar / Moderne',
+    id: 'Kore',
+    name: 'Kore (Femër)',
+    gender: 'Femër',
+    toneDesc: 'E ngrohtë, e qetë, me artikulim kristal të pastër',
+    recommendedFor: 'Apartamente luksoze, rezidenca private dhe prezantime të rafinuara',
+    samplePitch: 'E mesme / E butë',
   },
 ];
 
 const VALID_VOICE_IDS = new Set(VOICES.map((v) => v.id));
 const VOICE_ALIASES: Record<string, string> = {
-  Perseus: 'Iapetus',
-  Orpheus: 'Orus',
-  Thalassa: 'Callirrhoe',
+  Perseus: 'Charon',
+  Orpheus: 'Charon',
+  Iapetus: 'Charon',
+  Fenrir: 'Charon',
+  Puck: 'Charon',
+  Orus: 'Charon',
+  Zephyr: 'Kore',
+  Aoede: 'Kore',
+  Leda: 'Kore',
+  Thalassa: 'Kore',
+  Callirrhoe: 'Kore',
 };
 
 function albanianGrammarFallback(input: string, mode: 'grammar' | 'enhance') {
@@ -369,7 +313,7 @@ export default {
     if (url.pathname === '/api/tts/generate' && request.method === 'POST') {
       try {
         const body = (await request.json()) as any;
-        const { text, voice = 'Kore', tone = 'Profesional', speedInstruction = 'Normal' } = body || {};
+        const { text, voice = 'Charon', tone = 'Profesional', speedInstruction = 'Normal' } = body || {};
 
         if (!text || typeof text !== 'string' || !text.trim()) {
           return new Response(JSON.stringify({ error: 'Teksti është i nevojshëm.' }), {
@@ -399,7 +343,7 @@ export default {
         });
 
         const mappedVoice = VOICE_ALIASES[voice] || voice;
-        const resolvedVoice = VALID_VOICE_IDS.has(mappedVoice) ? mappedVoice : 'Kore';
+        const resolvedVoice = VALID_VOICE_IDS.has(mappedVoice) ? mappedVoice : 'Charon';
 
         const stylePrompt = `Clear, natural spoken Albanian pronunciation. Real Estate presentation tone: ${tone}. Pace: ${speedInstruction}. Articulate numbers, locations, and descriptions fluently.`;
 
