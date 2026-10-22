@@ -380,10 +380,11 @@ export default {
 
         const apiKey = resolveApiKey(env);
         if (!apiKey) {
+          const keys = Object.keys(env || {}).filter((k) => k !== 'ASSETS');
+          const keysFound = keys.length > 0 ? `U gjetën variablat: [${keys.join(', ')}]` : 'Asnjë variabël nuk u gjet te env';
           return new Response(
             JSON.stringify({
-              error:
-                'GEMINI_API_KEY nuk u gjet ende në Cloudflare! Nëse sapo e shtove te Variables and Secrets, shko te Deployments dhe kliko "Redeploy" (ose "Retry build") që Cloudflare ta lidhë çelësin me faqen live.',
+              error: `GEMINI_API_KEY nuk u lexua nga Cloudflare (${keysFound}). Sigurohu që te Cloudflare Build Settings ke: npx wrangler deploy --keep-vars ose shtoje te Build Variables.`,
             }),
             {
               status: 500,
