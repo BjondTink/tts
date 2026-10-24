@@ -104,48 +104,136 @@ function wavToMp3Buffer(wavBuffer: Buffer): Buffer {
   return result;
 }
 
-// Voices catalog with Albanian metadata for Real Estate
+// Voices catalog with multilingual metadata (Shqip, English, Italiano, Deutsch)
 export interface VoiceMeta {
   id: string;
   name: string;
   gender: 'Femër' | 'Mashkull';
+  language: 'sq' | 'en' | 'it' | 'de';
+  languageLabel: string;
+  flag: string;
   toneDesc: string;
   recommendedFor: string;
   samplePitch: string;
+  isPrimary?: boolean;
 }
 
 const VOICES: VoiceMeta[] = [
+  // 🇦🇱 Shqip (Albanian)
   {
     id: 'Charon',
-    name: 'Charon (Mashkull - Primar)',
+    name: 'Charon',
     gender: 'Mashkull',
-    toneDesc: 'Zë i thellë, autoritar, serioz dhe bindës',
+    language: 'sq',
+    languageLabel: 'Shqip',
+    flag: '🇦🇱',
+    toneDesc: 'Zë i thellë, autoritar, serioz dhe shumë bindës',
     recommendedFor: 'Vila elitare, apartamente premium, video promocionale dhe njoftime shitjesh',
     samplePitch: 'E thellë / Bariton',
+    isPrimary: true,
   },
   {
     id: 'Kore',
-    name: 'Kore (Femër)',
+    name: 'Kore',
     gender: 'Femër',
+    language: 'sq',
+    languageLabel: 'Shqip',
+    flag: '🇦🇱',
     toneDesc: 'E ngrohtë, e qetë, me artikulim kristal të pastër',
     recommendedFor: 'Apartamente luksoze, rezidenca private dhe prezantime të rafinuara',
     samplePitch: 'E mesme / E butë',
+  },
+
+  // 🇬🇧 Anglisht (English)
+  {
+    id: 'Puck',
+    name: 'Puck',
+    gender: 'Mashkull',
+    language: 'en',
+    languageLabel: 'English',
+    flag: '🇬🇧',
+    toneDesc: 'Confident, dynamic, fluent international English delivery',
+    recommendedFor: 'Luxury commercial ads, Reels, global buyer presentations',
+    samplePitch: 'Mid / Dynamic',
+    isPrimary: true,
+  },
+  {
+    id: 'Zephyr',
+    name: 'Zephyr',
+    gender: 'Femër',
+    language: 'en',
+    languageLabel: 'English',
+    flag: '🇬🇧',
+    toneDesc: 'Warm, elegant, clear British & international pronunciation',
+    recommendedFor: 'Penthouses, vacation retreats, corporate property listings',
+    samplePitch: 'Bright / Polished',
+  },
+
+  // 🇮🇹 Italisht (Italian)
+  {
+    id: 'Orus',
+    name: 'Orus',
+    gender: 'Mashkull',
+    language: 'it',
+    languageLabel: 'Italiano',
+    flag: '🇮🇹',
+    toneDesc: 'Voce maschile calda, autorevole, naturale ed elegante',
+    recommendedFor: 'Dimore storiche, ville sul lago/mare, annunci immobiliari di pregio',
+    samplePitch: 'Profonda / Calda',
+    isPrimary: true,
+  },
+  {
+    id: 'Aoede',
+    name: 'Aoede',
+    gender: 'Femër',
+    language: 'it',
+    languageLabel: 'Italiano',
+    flag: '🇮🇹',
+    toneDesc: 'Voce femminile melodica, raffinata ed espressiva',
+    recommendedFor: 'Appartamenti moderni, open space, video tour emozionali',
+    samplePitch: 'Media / Espressiva',
+  },
+
+  // 🇩🇪 Gjermanisht (German)
+  {
+    id: 'Fenrir',
+    name: 'Fenrir',
+    gender: 'Mashkull',
+    language: 'de',
+    languageLabel: 'Deutsch',
+    flag: '🇩🇪',
+    toneDesc: 'Souveräne, präzise und vertrauenswürdige Männerstimme',
+    recommendedFor: 'Kapitalanlagen, Neubauprojekte, Gewerbe- und Luxusimmobilien',
+    samplePitch: 'Kräftig / Souverän',
+    isPrimary: true,
+  },
+  {
+    id: 'Leda',
+    name: 'Leda',
+    gender: 'Femër',
+    language: 'de',
+    languageLabel: 'Deutsch',
+    flag: '🇩🇪',
+    toneDesc: 'Freundliche, professionelle und kristallklare Frauenstimme',
+    recommendedFor: 'Familienhäuser, Ferienwohnungen, ansprechende Social-Media-Clips',
+    samplePitch: 'Mittel / Freundlich',
   },
 ];
 
 const VALID_VOICE_IDS = new Set(VOICES.map((v) => v.id));
 const VOICE_ALIASES: Record<string, string> = {
   Perseus: 'Charon',
-  Orpheus: 'Charon',
-  Iapetus: 'Charon',
-  Fenrir: 'Charon',
-  Puck: 'Charon',
-  Orus: 'Charon',
-  Zephyr: 'Kore',
-  Aoede: 'Kore',
-  Leda: 'Kore',
-  Thalassa: 'Kore',
-  Callirrhoe: 'Kore',
+  Orpheus: 'Orus',
+  Iapetus: 'Fenrir',
+  Thalassa: 'Zephyr',
+  Callirrhoe: 'Aoede',
+};
+
+const LANGUAGE_STYLE_PROMPTS: Record<string, string> = {
+  sq: 'Clear, natural spoken Albanian pronunciation with authentic articulation of words, numbers, and places.',
+  en: 'Clear, engaging, and professional spoken English pronunciation with fluent pacing and international articulation.',
+  it: 'Pronuncia italiana chiara, naturale, elegante e fluente. Tono professionale per annunci immobiliari.',
+  de: 'Klare, natürliche und professionelle deutsche Aussprache. Souveräne Artikulation für Immobilienpräsentationen.',
 };
 
 // Endpoint: List Voices
@@ -401,13 +489,13 @@ Kthe përgjigjen të strukturuar në JSON me:
 // Endpoint: Generate Speech (TTS)
 app.post('/api/tts/generate', async (req, res) => {
   try {
-    const { text, voice = 'Charon', tone = 'Profesional', speedInstruction = 'Normal' } = req.body;
+    const { text, voice = 'Charon', language, tone = 'Profesional', speedInstruction = 'Normal' } = req.body;
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return res.status(400).json({ error: 'Ju lutem shkruani ose ngjitni tekstin që dëshironi të konvertoni në audio.' });
     }
 
-    // Compose nuanced style directions for Gemini TTS in Albanian
+    // Compose nuanced style directions for Gemini TTS in the selected language
     let speedHint = '';
     if (speedInstruction === 'Pak më e shpejtë') {
       speedHint = 'Speak at a brisk, energetic pace.';
@@ -421,7 +509,10 @@ app.post('/api/tts/generate', async (req, res) => {
     const mappedVoice = VOICE_ALIASES[voice] || voice;
     const resolvedVoice = VALID_VOICE_IDS.has(mappedVoice) ? mappedVoice : 'Charon';
 
-    const stylePrompt = `Clear, natural spoken Albanian pronunciation. Real Estate presentation tone: ${tone}. ${speedHint} Articulate numbers, locations, and descriptions fluently.`;
+    const voiceMeta = VOICES.find((v) => v.id === resolvedVoice);
+    const targetLang = language || voiceMeta?.language || 'sq';
+    const langPrompt = LANGUAGE_STYLE_PROMPTS[targetLang] || LANGUAGE_STYLE_PROMPTS.sq;
+    const stylePrompt = `${langPrompt} Real Estate presentation tone: ${tone}. ${speedHint} Articulate numbers, locations, and descriptions fluently.`;
 
     const ttsModels = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
     let response: any = null;
